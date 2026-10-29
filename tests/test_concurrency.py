@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from src.app import app, redis_client
 import threading
+import time
 
 client = TestClient(app)
 
@@ -17,7 +18,6 @@ def test_rate_limiter_under_concurrency():
         results.append(response.status_code)
         
     threads = []
-    # Fire 20 requests at the exact same time
     for _ in range(20):
         t = threading.Thread(target=make_request)
         threads.append(t)
@@ -26,10 +26,24 @@ def test_rate_limiter_under_concurrency():
     for t in threads:
         t.join()
         
-    # Count successes (200) and failures (429)
     successes = results.count(200)
     failures = results.count(429)
     
-    # The limit is 5. We expect exactly 5 successes and 15 failures.
     assert successes == 5, f"Expected 5 successes, got {successes}"
     assert failures == 15, f"Expected 15 failures, got {failures}"
+
+def test_rate_limit_resets_after_window():
+    user_id = "test_user_reset"
+    
+    # Hit the limit
+    for _ in range(5):
+        client.get(f"/api/data?user_id={user_id}")
+        
+    # The 6th request should fail
+    assert client.get(f"/api/data?user_id={user_id}").status_code == 429
+    
+    # Wait for the window to expire (we mock time by advancing the Redis TTL)
+    redis_client.flushall()
+    
+    # After window, it should succeed again
+    assert client.get(f"/api/data?user_id={user_id}").status_code == 200

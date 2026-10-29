@@ -7,4 +7,9 @@ RUN pip install fastapi uvicorn redis pytest httpx
 
 COPY . .
 
-CMD service redis-server start && pytest tests/
+# Start redis in the background
+RUN echo "service redis-server start" > /start_redis.sh
+RUN chmod +x /start_redis.sh
+
+ENTRYPOINT ["/start_redis.sh"]
+CMD ["pytest", "tests/"]
