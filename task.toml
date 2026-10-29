@@ -1,0 +1,7 @@
+[task]
+name = "distributed-rate-limiter"
+description = "Fix a critical race condition in a Redis-backed rate limiter under concurrent load."
+max_agent_time = 7200 # 2 hours
+
+[agent]
+instruction = "instruction.md"
